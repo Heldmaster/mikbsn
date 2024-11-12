@@ -1,3 +1,9 @@
+*.csv
+
 src/*
 !src/*.c
 !src/*.h
+
+emulator/venv
+emulator/*.csv
+emulator/*.png
