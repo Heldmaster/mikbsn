@@ -1,3 +1,5 @@
 src/*
 !src/*.c
 !src/*.h
+!src/*.csv
+
