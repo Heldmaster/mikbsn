@@ -55,11 +55,35 @@ uint8_t parse_ceng_response(char *response, struct celltower *towers) {
     return count;
 }
 
+/*
 double signal_to_distance(int16_t RECEIVELEVEL, double frequency) {
     double PL = RECEIVELEVEL; 
     double d = pow(10, (PL - 20 * log10(frequency) + 147.55) / 20);
     return d; 
 }
+*/
+
+/*
+double signal_to_distance(int16_t RECEIVELEVEL, double frequency) {
+    // Если RSSI приходит как положительное, инвертируем его знак
+    int16_t rssi = RECEIVELEVEL;
+    rssi = -rssi;  // инвертируем знак
+    return pow(10, (20 - rssi) / 20.0);  // Простое приближение
+}
+*/
+
+double signal_to_distance(int16_t RECEIVELEVEL, double frequency) {
+    // Проверка положительного RSSI
+    if (RECEIVELEVEL > 0) {
+        RECEIVELEVEL = -RECEIVELEVEL; // Инвертируем в отрицательное
+    }
+    double PL = RECEIVELEVEL;
+    double d = pow(10, (PL - 20 * log10(frequency) + 147.55) / 20.0);
+    d *= 10; //9.79
+    return d > 0 ? d : 1;  // Минимальное расстояние — 1 метр
+}
+
+
 
 // трилатерация
 /*

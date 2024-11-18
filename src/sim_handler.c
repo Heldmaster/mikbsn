@@ -74,8 +74,8 @@ int main() {
 
     struct termios options;
     tcgetattr(uart_fd, &options);
-    cfsetispeed(&options, B115200);
-    cfsetospeed(&options, B115200);
+    cfsetispeed(&options, SIM_UART_BAUD_RATE);
+    cfsetospeed(&options, SIM_UART_BAUD_RATE);
     options.c_cflag |= (CLOCAL | CREAD);
     options.c_cflag &= ~PARENB;
     options.c_cflag &= ~CSTOPB;
@@ -152,9 +152,6 @@ int main() {
                 exit(EXIT_FAILURE);
             }
         }
-
-        // Пауза перед следующим запросом
-        sleep(5);
     }
 
     close(client_socket);

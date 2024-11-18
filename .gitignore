@@ -5,5 +5,3 @@ src/*
 !src/*.h
 
 emulator/venv
-emulator/*.csv
-emulator/*.png

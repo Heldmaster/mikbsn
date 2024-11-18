@@ -8,13 +8,15 @@ import pyqtgraph as pg
 import glob
 import time
 import threading
+import math
 
-MAP_IMAGE_PATH = "alidade_satellite.jpg"
+MAP_IMAGE_PATH = "1.jpg"
 TOWERS_DATA_PATH = "250.csv"
+LOG_FILE_PATH = "/home/anton/Desktop/mikbsn_m/src/location_log.txt"  
 MAX_TOWERS_DISPLAY = 2000
 MOSCOW_CENTER_LON = 37.618423
 MOSCOW_CENTER_LAT = 55.751244
-MAP_ZOOM = 13
+MAP_ZOOM = 260
 
 class Sim800Emulator(QtWidgets.QMainWindow):
     def __init__(self):
@@ -82,8 +84,8 @@ class Sim800Emulator(QtWidgets.QMainWindow):
         self.map_view.scene().sigMouseClicked.connect(self.add_waypoint)
 
         # Настройка UART соединений
-        self.receive_port = "/dev/pts/1"
-        self.send_port = "/dev/pts/2"
+        self.receive_port = "/dev/pts/2"
+        self.send_port = "/dev/pts/1"
         self.baud_rate = 115200
         self.setup_uart_connections()
 
@@ -94,6 +96,76 @@ class Sim800Emulator(QtWidgets.QMainWindow):
 
         # Список для хранения меток расстояний до вышек
         self.tower_distance_labels = []
+
+       # self.logged_points = set()  # Храним уже добавленные точки
+       # self.log_timer = QtCore.QTimer(self)
+       # self.log_timer.timeout.connect(self.update_log_points)
+       # self.log_timer.start(1000)  # Проверяем лог каждые 0,2 секунды
+
+    def update_log_points(self):
+        """Читает лог-файл и добавляет новые точки на карту, если они еще не нанесены."""
+        if not os.path.exists(LOG_FILE_PATH):
+            print(f"Лог-файл {LOG_FILE_PATH} не найден.")
+            return
+    
+        try:
+            with open(LOG_FILE_PATH, 'r') as file:
+                lines = file.readlines()
+    
+            previous_timestamp = None
+    
+            for line in lines:
+                parts = line.strip().split(',')
+                timestamp = parts[0].strip()
+                lat = float(parts[1].split('=')[1])
+                lon = float(parts[2].split('=')[1])
+                point_key = (lat, lon)  # Координаты как уникальный ключ
+    
+                # Проверяем, не добавлена ли уже точка с тем же временным штампом
+                if timestamp == previous_timestamp:
+                    continue  # Пропускаем точку, если время совпадает с предыдущим
+    
+                # Проверяем, если точка уже добавлена
+                if point_key not in self.logged_points:
+                    self.logged_points.add(point_key)
+    
+                    # Добавляем новый зеленый маркер
+                    log_point_marker = pg.ScatterPlotItem(
+                        x=[lon], y=[lat], pen=pg.mkPen(None), brush=pg.mkBrush(0, 255, 0, 120), size=8
+                    )
+                    self.map_view.addItem(log_point_marker)
+                    self.tower_markers.append(log_point_marker)  # Сохраняем маркер для возможного сброса
+    
+                # Обновляем предыдущий временной штамп после добавления точки
+                previous_timestamp = timestamp
+    
+        except Exception as e:
+            print(f"Ошибка при чтении лог-файла: {e}")
+
+    def load_log_points(self):
+            """Загружает точки из лог-файла и отображает их на карте зеленым цветом."""
+            if not os.path.exists(LOG_FILE_PATH):
+                print(f"Лог-файл {LOG_FILE_PATH} не найден.")
+                return
+    
+            try:
+                with open(LOG_FILE_PATH, 'r') as file:
+                    lines = file.readlines()
+    
+                for line in lines:
+                    parts = line.strip().split(',')
+                    lat = float(parts[1].split('=')[1])
+                    lon = float(parts[2].split('=')[1])
+                    
+                    # Создаем зеленый маркер для каждой точки
+                    log_point_marker = pg.ScatterPlotItem(
+                        x=[lon], y=[lat], pen=pg.mkPen(None), brush=pg.mkBrush(0, 255, 0, 120), size=8
+                    )
+                    self.map_view.addItem(log_point_marker)
+                    self.tower_markers.append(log_point_marker)  # Сохраняем маркер для возможного сброса
+    
+            except Exception as e:
+                print(f"Ошибка при чтении лог-файла: {e}")
 
     def add_waypoint(self, event):
         """Добавляет точки пути и активирует кнопку запуска после добавления точки."""
@@ -212,19 +284,27 @@ class Sim800Emulator(QtWidgets.QMainWindow):
             print(f"Ошибка при подключении к UART: {e}")
 
     def calculate_distance(self, lat1, lon1, lat2, lon2):
-        """Вычисляет расстояние между двумя географическими точками (в метрах)."""
-        R = 6371000  # Радиус Земли в метрах
+        R = 6371000 
         phi1, phi2 = np.radians(lat1), np.radians(lat2)
         dphi = np.radians(lat2 - lat1)
         dlambda = np.radians(lon2 - lon1)
-
         a = np.sin(dphi / 2) ** 2 + np.cos(phi1) * np.cos(phi2) * np.sin(dlambda / 2) ** 2
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-
         return R * c
 
     def calculate_rssi(self, lat1, lon1, lat2, lon2):
-        """Вычисляет приблизительное значение RSSI на основе расстояния между двумя точками."""
+    
+        distance = self.calculate_distance(lat1, lon1, lat2, lon2)  
+       #print("distance betweed UAV and TOWER at lat="+str(lat2)+", lon="+str(lon2)+" : " + str(distance))
+        tx_power = 20
+        fspl_constant = 147.55
+        path_loss = 20 * math.log10(distance) + 20 * math.log10(1800) - fspl_constant
+        rssi = -1*(tx_power - path_loss)
+        rssi = round(rssi)
+       # print("calculated RSSI: "+str(rssi) )
+        
+
+        '''
         distance = self.calculate_distance(lat1, lon1, lat2, lon2)  # Расстояние в метрах
         if distance < 1:
             distance = 1  # Избегаем log(0)
@@ -233,6 +313,11 @@ class Sim800Emulator(QtWidgets.QMainWindow):
         rssi = A - 10 * n * np.log10(distance)
         rssi = round(rssi)
         return rssi
+        '''
+        
+        return rssi
+    
+    
 
     def calculate_distances_vectorized(self, lat1, lon1, lat2, lon2):
         """Векторизованное вычисление расстояний между точками."""
@@ -347,7 +432,7 @@ class Sim800Emulator(QtWidgets.QMainWindow):
         self.tower_brushes = [pg.mkBrush(0, 0, 255, 120) for _ in range(len(self.towers_df))]
 
         self.tower_scatter = pg.ScatterPlotItem(
-            x=longitudes, y=latitudes, pen=pg.mkPen(None), brush=self.tower_brushes, size=5
+            x=longitudes, y=latitudes, pen=pg.mkPen(None), brush=self.tower_brushes, size=10
         )
         self.map_view.addItem(self.tower_scatter)
         self.towers = list(zip(longitudes, latitudes, mccs, mncs, cells))  # Добавляем MNC в список вышек
@@ -465,7 +550,26 @@ class Sim800Emulator(QtWidgets.QMainWindow):
             self.update_nearest_towers()
 
 if __name__ == "__main__":
+    
     app = QtWidgets.QApplication(sys.argv)
+    app.setStyle("Fusion")
+    dark_palette = QtGui.QPalette()
+    dark_palette.setColor(QtGui.QPalette.Window, QtGui.QColor(53, 53, 53))
+    dark_palette.setColor(QtGui.QPalette.WindowText, QtCore.Qt.white)
+    dark_palette.setColor(QtGui.QPalette.Base, QtGui.QColor(25, 25, 25))
+    dark_palette.setColor(QtGui.QPalette.AlternateBase, QtGui.QColor(53, 53, 53))
+    dark_palette.setColor(QtGui.QPalette.ToolTipBase, QtCore.Qt.white)
+    dark_palette.setColor(QtGui.QPalette.ToolTipText, QtCore.Qt.white)
+    dark_palette.setColor(QtGui.QPalette.Text, QtCore.Qt.white)
+    dark_palette.setColor(QtGui.QPalette.Button, QtGui.QColor(53, 53, 53))
+    dark_palette.setColor(QtGui.QPalette.ButtonText, QtCore.Qt.white)
+    dark_palette.setColor(QtGui.QPalette.BrightText, QtCore.Qt.red)
+    dark_palette.setColor(QtGui.QPalette.Link, QtGui.QColor(42, 130, 218))
+    dark_palette.setColor(QtGui.QPalette.Highlight, QtGui.QColor(42, 130, 218))
+    dark_palette.setColor(QtGui.QPalette.HighlightedText, QtCore.Qt.black)
+    app.setPalette(dark_palette)
+    
+    
     emulator = Sim800Emulator()
     emulator.show()
     sys.exit(app.exec_())

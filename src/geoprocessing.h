@@ -27,7 +27,8 @@ struct celltower {
     int16_t RECEIVELEVEL;
 };
 
-uint8_t parse_ceng_response(char *response, struct celltower *);
+double signal_to_distance(int16_t RECEIVELEVEL, double frequency);
+uint8_t parse_ceng_response(char *response, struct celltower *towers);
 //struct Location trilaterate(struct celltower *towers, uint8_t towerCount, struct Node **hash_table);
 
 #endif
