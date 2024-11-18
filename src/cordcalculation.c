@@ -125,10 +125,10 @@ struct Location trilaterate(tower_info_t *towers, int towerCount) {
     double r2 = signal_to_distance(towers[1].receive_level, 1800);
     double r3 = signal_to_distance(towers[2].receive_level, 1800);
 
-    printf("[DEBUG] Cartesian coordinates:\n");
-    printf("  Tower 1: x=%f, y=%f, z=%f, r1=%f\n", x1, y1, z1, r1);
-    printf("  Tower 2: x=%f, y=%f, z=%f, r2=%f\n", x2, y2, z2, r2);
-    printf("  Tower 3: x=%f, y=%f, z=%f, r3=%f\n", x3, y3, z3, r3);
+    //printf("[DEBUG] Cartesian coordinates:\n");
+    //printf("  Tower 1: x=%f, y=%f, z=%f, r1=%f\n", x1, y1, z1, r1);
+    //printf("  Tower 2: x=%f, y=%f, z=%f, r2=%f\n", x2, y2, z2, r2);
+    //printf("  Tower 3: x=%f, y=%f, z=%f, r3=%f\n", x3, y3, z3, r3);
 
     // Решение системы уравнений в 3D
     double ex[3], ey[3], ez[3], d, i, j, x, y, z;
@@ -138,47 +138,47 @@ struct Location trilaterate(tower_info_t *towers, int towerCount) {
     ex[1] = y2 - y1;
     ex[2] = z2 - z1;
     d = sqrt(ex[0] * ex[0] + ex[1] * ex[1] + ex[2] * ex[2]);
-    printf("[DEBUG] Distance between Tower 1 and Tower 2: d=%f\n", d);
+    //printf("[DEBUG] Distance between Tower 1 and Tower 2: d=%f\n", d);
 
     for (int k = 0; k < 3; k++) ex[k] /= d;  // Нормализация
-    printf("[DEBUG] Unit vector ex: x=%f, y=%f, z=%f\n", ex[0], ex[1], ex[2]);
+    //printf("[DEBUG] Unit vector ex: x=%f, y=%f, z=%f\n", ex[0], ex[1], ex[2]);
 
     // Вектор от первой до третьей точки
     double t3[3] = {x3 - x1, y3 - y1, z3 - z1};
     i = ex[0] * t3[0] + ex[1] * t3[1] + ex[2] * t3[2];
-    printf("[DEBUG] Projection of Tower 3 onto ex: i=%f\n", i);
+    //printf("[DEBUG] Projection of Tower 3 onto ex: i=%f\n", i);
 
     // Вектор ортогонален ex
     for (int k = 0; k < 3; k++) ey[k] = t3[k] - i * ex[k];
     j = sqrt(ey[0] * ey[0] + ey[1] * ey[1] + ey[2] * ey[2]);
-    printf("[DEBUG] Distance orthogonal to ex (j): j=%f\n", j);
+    //printf("[DEBUG] Distance orthogonal to ex (j): j=%f\n", j);
 
     for (int k = 0; k < 3; k++) ey[k] /= j;  // Нормализация
-    printf("[DEBUG] Unit vector ey: x=%f, y=%f, z=%f\n", ey[0], ey[1], ey[2]);
+    //printf("[DEBUG] Unit vector ey: x=%f, y=%f, z=%f\n", ey[0], ey[1], ey[2]);
 
     // Вектор, ортогональный ex и ey
     ez[0] = ex[1] * ey[2] - ex[2] * ey[1];
     ez[1] = ex[2] * ey[0] - ex[0] * ey[2];
     ez[2] = ex[0] * ey[1] - ex[1] * ey[0];
-    printf("[DEBUG] Unit vector ez: x=%f, y=%f, z=%f\n", ez[0], ez[1], ez[2]);
+    //printf("[DEBUG] Unit vector ez: x=%f, y=%f, z=%f\n", ez[0], ez[1], ez[2]);
 
     x = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
     y = (r1 * r1 - r3 * r3 + i * i + j * j) / (2 * j) - (i / j) * x;
     z = sqrt(fabs(r1 * r1 - x * x - y * y));
 
-    printf("[DEBUG] Calculated x=%f, y=%f, z=%f\n", x, y, z);
+    //printf("[DEBUG] Calculated x=%f, y=%f, z=%f\n", x, y, z);
 
     // Перевод в глобальные координаты
     double result_x = x1 + x * ex[0] + y * ey[0] + z * ez[0];
     double result_y = y1 + x * ex[1] + y * ey[1] + z * ez[1];
     double result_z = z1 + x * ex[2] + y * ey[2] + z * ez[2];
 
-    printf("[DEBUG] Result Cartesian coordinates: x=%f, y=%f, z=%f\n", result_x, result_y, result_z);
+    //printf("[DEBUG] Result Cartesian coordinates: x=%f, y=%f, z=%f\n", result_x, result_y, result_z);
 
     struct Location result;
     cartesian_to_spherical(result_x, result_y, result_z, &result.latitude, &result.longitude);
 
-    printf("[DEBUG] Calculated lat=%f, long=%f\n", result.latitude, result.longitude);
+    printf("[DEBUG] LAT=%f, LONG=%f\n", result.latitude, result.longitude);
     log_location(result);
     return result;
 }

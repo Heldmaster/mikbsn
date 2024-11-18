@@ -1,5 +1,5 @@
 #define SIM_UART_BAUD_RATE      115200
-#define SIM_UART_PATH           "/dev/pts/6" 
+#define SIM_UART_PATH           "/dev/pts/1" 
 
 /*
 /dev/ttyUSB0 если подключение через usb-ttl для отладки
