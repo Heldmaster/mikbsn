@@ -5,3 +5,7 @@ src/*
 !src/*.h
 
 emulator/venv
+
+build/*
+!build/*.csv
+

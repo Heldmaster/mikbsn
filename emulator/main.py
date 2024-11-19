@@ -1,4 +1,5 @@
 import sys
+import sys
 import pandas as pd
 import numpy as np
 import os
@@ -10,9 +11,12 @@ import time
 import threading
 import math
 
-MAP_IMAGE_PATH = "1.jpg"
+import csv
+
+MAP_IMAGE_PATH = "1t.jpg"
 TOWERS_DATA_PATH = "250.csv"
-LOG_FILE_PATH = "/home/anton/Desktop/mikbsn_m/src/location_log.txt"  
+LOG_FILE_PATH = "../build/location_log.txt"  
+MAX_TOWERS_DISPLAY = 2000
 MAX_TOWERS_DISPLAY = 2000
 MOSCOW_CENTER_LON = 37.618423
 MOSCOW_CENTER_LAT = 55.751244
@@ -52,14 +56,6 @@ class Sim800Emulator(QtWidgets.QMainWindow):
         self.reset_button.clicked.connect(self.reset_simulation)
         control_layout.addWidget(self.reset_button)
 
-        #self.output_text_area = QtWidgets.QTextEdit()
-        #self.output_text_area.setReadOnly(True)
-        #layout.addWidget(self.output_text_area)
-
-        #self.input_text_area = QtWidgets.QTextEdit()
-        #self.input_text_area.setReadOnly(True)
-        #layout.addWidget(self.input_text_area)
-
         self.map_view = pg.PlotWidget()
         layout.addWidget(self.map_view)
         self.map_view.setAspectLocked(True)
@@ -85,7 +81,7 @@ class Sim800Emulator(QtWidgets.QMainWindow):
 
         # Настройка UART соединений
         self.receive_port = "/dev/pts/2"
-        self.send_port = "/dev/pts/1"
+        self.send_port = "/dev/pts/3"
         self.baud_rate = 115200
         self.setup_uart_connections()
 
@@ -97,13 +93,18 @@ class Sim800Emulator(QtWidgets.QMainWindow):
         # Список для хранения меток расстояний до вышек
         self.tower_distance_labels = []
 
-       # self.logged_points = set()  # Храним уже добавленные точки
-       # self.log_timer = QtCore.QTimer(self)
-       # self.log_timer.timeout.connect(self.update_log_points)
-       # self.log_timer.start(1000)  # Проверяем лог каждые 0,2 секунды
+
+        self.log_file = "logplot.csv"
+        # Открываем файл для записи и пишем заголовок, если файл создаётся впервые
+        with open(self.log_file, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Distance (m)", "RSSI (dBm)"])
+        self.logged_points = set()  # Храним уже добавленные точки
+        self.log_timer = QtCore.QTimer(self)
+        self.log_timer.timeout.connect(self.update_log_points)
+        self.log_timer.start(1000)  # Проверяем лог каждые 0,2 секунды
 
     def update_log_points(self):
-        """Читает лог-файл и добавляет новые точки на карту, если они еще не нанесены."""
         if not os.path.exists(LOG_FILE_PATH):
             print(f"Лог-файл {LOG_FILE_PATH} не найден.")
             return
@@ -292,29 +293,26 @@ class Sim800Emulator(QtWidgets.QMainWindow):
         c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
         return R * c
 
+
+    def log_data(self, distance, rssi):
+        with open(self.log_file, mode='a', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow([distance, rssi])
+
     def calculate_rssi(self, lat1, lon1, lat2, lon2):
     
         distance = self.calculate_distance(lat1, lon1, lat2, lon2)  
-       #print("distance betweed UAV and TOWER at lat="+str(lat2)+", lon="+str(lon2)+" : " + str(distance))
-        tx_power = 20
-        fspl_constant = 147.55
-        path_loss = 20 * math.log10(distance) + 20 * math.log10(1800) - fspl_constant
-        rssi = -1*(tx_power - path_loss)
-        rssi = round(rssi)
-       # print("calculated RSSI: "+str(rssi) )
-        
+        #print("distance betweed UAV and TOWER at lat="+str(lat2)+", lon="+str(lon2)+" : " + str(distance))
+        tx_power = -40
+        frequency_mhz = 1800 
+        fspl_constant = 32.45  
+        #path_loss = 20 * math.log10(distance) + 20 * math.log10(frequency_mhz) + fspl_constant
+        #rssi = (tx_power - path_loss)
+        rssi = tx_power - 10*2*math.log10(distance)
+        # Логирование пары Distance и RSSI
+        self.log_data(distance, rssi)
 
-        '''
-        distance = self.calculate_distance(lat1, lon1, lat2, lon2)  # Расстояние в метрах
-        if distance < 1:
-            distance = 1  # Избегаем log(0)
-        A = -40  # RSSI на расстоянии 1 метр
-        n = 3    # Коэффициент потерь
-        rssi = A - 10 * n * np.log10(distance)
         rssi = round(rssi)
-        return rssi
-        '''
-        
         return rssi
     
     
