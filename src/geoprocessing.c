@@ -77,10 +77,19 @@ double signal_to_distance(int16_t RECEIVELEVEL, double frequency) {
     if (RECEIVELEVEL > 0) {
         RECEIVELEVEL = -RECEIVELEVEL; // Инвертируем в отрицательное
     }
-    double PL = RECEIVELEVEL;
-    double d = pow(10, (PL - 20 * log10(frequency) + 147.55) / 20.0);
-    d *= 10; //9.79
-    return d > 0 ? d : 1;  // Минимальное расстояние — 1 метр
+	    // Передаточная мощность, если известна (например, 20 дБм)
+   // double TX_POWER = 20.0;
+
+    // Свободное затухание на расстоянии 1 метр для заданной частоты
+    double FSPL_CONSTANT = 147.55; // Для частоты в МГц и расстояния в метрах
+
+    // Расчет дистанции
+    //double PL = TX_POWER - RECEIVELEVEL; // Общий path loss (затухание сигнала)
+    //double d = pow(10, (RECEIVELEVEL - (20 * log10(frequency) + FSPL_CONSTANT)) / 20.0);
+    //d *= 0.; //9.79
+    float d = pow(10.0, (-40.0-(RECEIVELEVEL))/(10.0*2.0));
+    printf("receivelevel=%d, calculated d=%f\n", RECEIVELEVEL, d);
+    return d;  // Минимальное расстояние — 1 метр
 }
 
 

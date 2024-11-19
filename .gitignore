@@ -1,6 +1,11 @@
-build
+*.csv
+
 src/*
 !src/*.c
 !src/*.h
-!src/*.csv
+
+emulator/venv
+
+build/*
+!build/*.csv
 
